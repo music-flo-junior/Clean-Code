@@ -482,88 +482,239 @@ public class SetupTeardownIncluder {
 ### 리팩토링 전 upsertChannel
 
 ```java
-    public boolean upsertChannel(ContentsUpdateChannelParam updateChannelParam) throws Exception {
+/**
+* 채널 수정 - 2021.02.10 현재 채널 생성 로직 분리로 인해 update 만을 처리함
+*
+* @param updateChannelParam
+* @return
+* @throws Exception
+*/
+public boolean upsertChannel(ContentsUpdateChannelParam updateChannelParam) throws Exception {
 
-        ContentsSearchTrackParam searchTrackParam = new ContentsSearchTrackParam();
-        searchTrackParam.setPaging(false);
-        searchTrackParam.setTrackIdList(updateChannelParam.getTrackIdList());
+    ContentsSearchTrackParam searchTrackParam = new ContentsSearchTrackParam();
+    searchTrackParam.setPaging(false);
+    searchTrackParam.setTrackIdList(updateChannelParam.getTrackIdList());
 
-        updateChannelParam.setChnlPlayTm(searchTrackParam.getTrackIdList().size() > 0 ? this.getPlayTm(channelMapper.selectTrackList(searchTrackParam)) : "0");
+    updateChannelParam.setChnlPlayTm(searchTrackParam.getTrackIdList().size() > 0 ? this.getPlayTm(channelMapper.selectTrackList(searchTrackParam)) : "0");
 
-        if (null == updateChannelParam.getChnlId()) {
-            // 채널 등록
-            LocalDateTime renewDate = LocalDateTime.now();
+    if (null == updateChannelParam.getChnlId()) {
+        // 채널 등록
+        LocalDateTime renewDate = LocalDateTime.now();
 
-            updateChannelParam.setRenewDtime(renewDate);
-            updateChannelParam.setRenewTrackCnt(0);
+        updateChannelParam.setRenewDtime(renewDate);
+        updateChannelParam.setRenewTrackCnt(0);
 
-            channelMapper.insertChannel(updateChannelParam);
-            this.insertChannelMultiLink(updateChannelParam);
+        channelMapper.insertChannel(updateChannelParam);
+        this.insertChannelMultiLink(updateChannelParam);
 
-            if (ChnlType.AFLO == updateChannelParam.getChnlType()) {
-                channelMapper.insertAfloChnl(updateChannelParam);
-            }
+        if (ChnlType.AFLO == updateChannelParam.getChnlType()) {
+            channelMapper.insertAfloChnl(updateChannelParam);
+        }
 
-            if (ChnlType.AFLO != updateChannelParam.getChnlType() && !ObjectUtils.isEmpty(updateChannelParam.getOrgGenreId())) {
-                // 채널 장르 맵핑 데이터 추가
-                channelMapper.deleteMapSvcGenreChannel(updateChannelParam);
-                // 완료
-                channelMapper.insertMapSvcGenreChannel(updateChannelParam);
-            }
+        if (ChnlType.AFLO != updateChannelParam.getChnlType() && !ObjectUtils.isEmpty(updateChannelParam.getOrgGenreId())) {
+            // 채널 장르 맵핑 데이터 추가
+            channelMapper.deleteMapSvcGenreChannel(updateChannelParam);
+            // 완료
+            channelMapper.insertMapSvcGenreChannel(updateChannelParam);
+        }
 
-            // 채널 트랙 등록
-            insertChannelTrack(updateChannelParam);
+        // 채널 트랙 등록
+        insertChannelTrack(updateChannelParam);
+    } else {
+        updateChannelParam.setRenewTrackCnt(0);
+
+        //채널 수정
+        channelMapper.updateChannel(updateChannelParam);
+        this.updateChannelMultiLink(updateChannelParam);
+
+        if (ChnlType.AFLO != updateChannelParam.getChnlType() && !ObjectUtils.isEmpty(updateChannelParam.getOrgGenreId())) {
+            // 채널 장르 맵핑 데이터 추가
+            channelMapper.deleteMapSvcGenreChannel(updateChannelParam);
+            channelMapper.insertMapSvcGenreChannel(updateChannelParam);
         } else {
-
-            updateChannelParam.setRenewTrackCnt(0);
-
-            //채널 수정
-            channelMapper.updateChannel(updateChannelParam);
-            this.updateChannelMultiLink(updateChannelParam);
-
-            if (ChnlType.AFLO != updateChannelParam.getChnlType() && !ObjectUtils.isEmpty(updateChannelParam.getOrgGenreId())) {
-                // 채널 장르 맵핑 데이터 추가
-                channelMapper.deleteMapSvcGenreChannel(updateChannelParam);
-                channelMapper.insertMapSvcGenreChannel(updateChannelParam);
-            } else {
-                channelMapper.deleteMapSvcGenreChannel(updateChannelParam);
-            }
-
-            //채널 트랙 수정
-            updateChannelTrack(updateChannelParam);
+            channelMapper.deleteMapSvcGenreChannel(updateChannelParam);
         }
 
-        // 이미지 처리
-        updateChannelImg(updateChannelParam);
-
-        // 유효한 트랙 갯수로 업데이트
-        channelMapper.updateChannelTrackCnt(updateChannelParam.getChnlId());
-
-        //채널 타이틀곡 업데이트
-        Long titleTrackId = updateChannelParam.getTitleTrackId();
-        if (updateChannelParam.getTrackIdList().size() > 0) {
-            if (titleTrackId == null) {
-                //첫번째 trackId 로
-                titleTrackId = updateChannelParam.getTrackIdList().get(0);
-            }
-            channelMapper.updateInitChannelTitleYn(updateChannelParam.getChnlId());
-            channelMapper.updateChannelTitleYn(updateChannelParam.getChnlId(), titleTrackId);
-        }
-
-        // 이력 생성
-        insertChannelHistory(updateChannelParam);
-
-        // 레디스 캐시 삭제
-        String channelRedisKey = String.format(godmusicChanneRedislKeyFormat, updateChannelParam.getChnlId());
-        redisService.delWithPrefix(channelRedisKey); // 체널 캐시 삭제
-
-        for (String key : godmusicRecommendRedislKey) { // 추천 캐시 삭제
-            redisService.delWithPrefix(key);
-        }
-
-        return true;
+        //채널 트랙 수정
+        updateChannelTrack(updateChannelParam);
     }
+
+    // 이미지 처리
+    updateChannelImg(updateChannelParam);
+
+    // 유효한 트랙 갯수로 업데이트
+    channelMapper.updateChannelTrackCnt(updateChannelParam.getChnlId());
+
+    //채널 타이틀곡 업데이트
+    Long titleTrackId = updateChannelParam.getTitleTrackId();
+    if (updateChannelParam.getTrackIdList().size() > 0) {
+        if (titleTrackId == null) {
+            //첫번째 trackId 로
+            titleTrackId = updateChannelParam.getTrackIdList().get(0);
+        }
+        channelMapper.updateInitChannelTitleYn(updateChannelParam.getChnlId());
+        channelMapper.updateChannelTitleYn(updateChannelParam.getChnlId(), titleTrackId);
+    }
+
+    // 이력 생성
+    insertChannelHistory(updateChannelParam);
+
+    // 레디스 캐시 삭제
+    String channelRedisKey = String.format(godmusicChanneRedislKeyFormat, updateChannelParam.getChnlId());
+    redisService.delWithPrefix(channelRedisKey); // 체널 캐시 삭제
+
+    for (String key : godmusicRecommendRedislKey) { // 추천 캐시 삭제
+        redisService.delWithPrefix(key);
+    }
+
+    return true;
+}
 ```
+
+### 리팩토링
+
+```java
+/**
+* 채널 수정 서비스
+*
+* @param updateChannelParam
+* @return
+* @throws Exception
+*/
+public boolean updateChannel(ContentsUpdateChannelParam updateChannelParam) throws Exception {
+    beforeUpdate(updateChannelParam);
+    channelMapper.updateChannel(updateChannelParam);
+    afterUpdate(updateChannelParam);
+    return true;
+}
+
+public void beforeUpdate(ContentsUpdateChannelParam updateChannelParam) {
+    ContentsSearchTrackParam searchTrackParam = new ContentsSearchTrackParam();
+    searchTrackParam.setPaging(false);
+    searchTrackParam.setTrackIdList(updateChannelParam.getTrackIdList());
+
+    updateChannelParam.setChnlPlayTm(searchTrackParam.getTrackIdList().size() > 0 ? this.getPlayTm(channelMapper.selectTrackList(searchTrackParam)) : "0");
+
+    if (Objects.isNull(updateChannelParam.getChnlId())) throw new FloAdminException(CommonErrorDomain.BAD_REQUEST);
+    updateChannelParam.setRenewTrackCnt(0);
+
+}
+
+public void afterUpdate(ContentsUpdateChannelParam updateChannelParam) throws ParseException {
+    updateChannelMultiLink(updateChannelParam);
+    updateMapSvcGenreChannel(updateChannelParam);
+    updateChannelTrack(updateChannelParam);
+    updateChannelImg(updateChannelParam);
+    updateValidChannelTrackCnt(updateChannelParam);
+    updateChannelTitle(updateChannelParam);
+    insertChannelHistory(updateChannelParam);
+    deleteRedisCache(updateChannelParam);
+}
+
+/**
+* 채널 장르 매핑 데이터 추가
+* AFLO 타입일 경우 장르 값 삭제
+*
+* @param updateChannelParam
+*/
+private void updateMapSvcGenreChannel(ContentsUpdateChannelParam updateChannelParam) {
+    if (ChnlType.AFLO != updateChannelParam.getChnlType() && !ObjectUtils.isEmpty(updateChannelParam.getOrgGenreId())) {
+        // 채널 장르 맵핑 데이터 추가
+        channelMapper.deleteMapSvcGenreChannel(updateChannelParam);
+        channelMapper.insertMapSvcGenreChannel(updateChannelParam);
+    } else {
+        channelMapper.deleteMapSvcGenreChannel(updateChannelParam);
+    }
+}
+
+/**
+* 유효한 채널 트랙 갯수로 업데이트
+* @param updateChannelParam
+*/
+private void updateValidChannelTrackCnt(ContentsUpdateChannelParam updateChannelParam) {
+    channelMapper.updateChannelTrackCnt(updateChannelParam.getChnlId());
+}
+
+/**
+* 업데이트 후 레디스 캐시 삭제
+* @param updateChannelParam
+*/
+private void deleteRedisCache(ContentsUpdateChannelParam updateChannelParam){
+    // 레디스 캐시 삭제
+    String channelRedisKey = String.format(godmusicChanneRedislKeyFormat, updateChannelParam.getChnlId());
+    redisService.delWithPrefix(channelRedisKey); // 체널 캐시 삭제
+
+    for (String key : godmusicRecommendRedislKey) { // 추천 캐시 삭제
+        redisService.delWithPrefix(key);
+    }
+}
+
+/**
+* 채널 타이틀곡 업데이트
+* titleTrackId가 없을 경우 첫 번째 트랙 아이디로 설정
+*
+* @param updateChannelParam
+*/
+private void updateChannelTitle(ContentsUpdateChannelParam updateChannelParam){
+    Long titleTrackId = updateChannelParam.getTitleTrackId();
+    if (updateChannelParam.getTrackIdList().size() > 0) {
+        if (titleTrackId == null) {
+            titleTrackId = updateChannelParam.getTrackIdList().get(0);
+        }
+        channelMapper.updateInitChannelTitleYn(updateChannelParam.getChnlId());
+        channelMapper.updateChannelTitleYn(updateChannelParam.getChnlId(), titleTrackId);
+    }
+}
+
+/**
+* 채널 이미지 업데이트
+* @param updateChannelParam
+*/
+private void updateChannelImg(ContentsUpdateChannelParam updateChannelParam) {
+    if (ChnlType.AFLO.getCode().equals(updateChannelParam.getChnlType().getCode())) {
+        Long chnlId = updateChannelParam.getChnlId();
+        if (!CollectionUtils.isEmpty(updateChannelParam.getChnlImages())) {
+            channelMapper.deleteChnlImage(updateChannelParam.getChnlId());
+            for (ContentsChnlImage chnlImage : updateChannelParam.getChnlImages()) {
+                chnlImage.setChnlId(updateChannelParam.getChnlId());
+                chnlImage.setCreateUserNo(updateChannelParam.getCreateUserNo());
+                channelMapper.insertChnlImage(chnlImage);
+            }
+        } else {
+            channelMapper.deleteChnlImage(updateChannelParam.getChnlId());
+        }
+        channelMapper.updateAfloChnl(chnlId, updateChannelParam.getAfloArtistId());
+    } else {
+        if (null != updateChannelParam.getImgUrl() && !("").equals(updateChannelParam.getImgUrl())) {
+            channelMapper.deleteChnlImage(updateChannelParam.getChnlId());
+            channelMapper.insertChnlImage(ContentsChnlImage.builder()
+                    .chnlId(updateChannelParam.getChnlId()).imgUrl(updateChannelParam.getImgUrl()).chnlImgType(ChnlImgType.PANNEL)
+                    .createUserNo(updateChannelParam.getCreateUserNo()).build());
+        } else {
+            channelMapper.deleteChnlImage(updateChannelParam.getChnlId());
+        }
+    }
+}
+
+/**
+* 채널 히스토리 이력 생성
+* @param updateChannelParam
+*/
+private void insertChannelHistory(ContentsUpdateChannelParam updateChannelParam) {
+
+    ContentsChannelHistory channelHistory = new ContentsChannelHistory();
+    channelHistory.setChnlChgType("TRACK");
+    channelHistory.setChnlId(updateChannelParam.getChnlId());
+    channelHistory.setCreateUserNo(updateChannelParam.getUpdateUserNo());
+    channelHistory.setCreateDtime(updateChannelParam.getCreateDtime());
+
+    channelMapper.insertChannelHistory(channelHistory);
+    channelMapper.insertChannelTrackHistory(channelHistory);
+
+}
+```
+
+
 
 ### 참고 자료
 - Clean Code
