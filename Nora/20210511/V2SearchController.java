@@ -16,14 +16,19 @@ import com.sktechx.godmusic.lib.domain.GMContext;
 import com.sktechx.godmusic.lib.domain.exception.CommonBusinessException;
 import com.sktechx.godmusic.lib.domain.exception.CommonErrorDomain;
 import com.sktechx.godmusic.search.common.util.VersionUtils;
+import com.sktechx.godmusic.search.rest.model.vo.AI.AIIntegrationSearchRequest;
+import com.sktechx.godmusic.search.rest.model.vo.AI.AISearchRequest;
+import com.sktechx.godmusic.search.rest.model.vo.AI.AISpecifySearchRequest;
 import com.sktechx.godmusic.search.rest.model.vo.keyword.SearchKeywordItemVo;
 import com.sktechx.godmusic.search.rest.model.vo.keyword.SearchKeywordRisingVo;
 import com.sktechx.godmusic.search.rest.model.vo.keyword.SearchKeywordVo;
 import com.sktechx.godmusic.search.rest.model.vo.search.SearchResultItemVo;
 import com.sktechx.godmusic.search.rest.model.vo.search.SearchResultVo;
 import com.sktechx.godmusic.search.rest.model.vo.search.SpecifySearchResultVo;
+import com.sktechx.godmusic.search.rest.service.InstantSearchService;
 import com.sktechx.godmusic.search.rest.service.KeywordSearchService;
 import com.sktechx.godmusic.search.rest.service.SearchService;
+import com.sktechx.godmusic.search.rest.service.TasteMixService;
 import com.sktechx.godmusic.search.rest.util.SearchKeywordUtils;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
@@ -57,10 +62,9 @@ import static com.sktechx.godmusic.search.common.util.CommonUtils.getValueOrDefa
 public class V2SearchController {
 
     private final SearchService searchService;
-    // 내 취향 믹스를 더 명확하게 표현하기위해 My를 추가했다.
-    private final MyTasteMixService myTasteMixService;
+    private final TasteMixService tasteMixService;
     private final KeywordSearchService keywordSearchService;
-    private final KeywordAutoCompletionService keywordAutoCompletionService;
+    private final InstantSearchService instantSearchService;
 
     @ApiOperation(value = "통합 검색", httpMethod = "GET", notes = "음원 검색 <br>AI Cell version")
     @GetMapping("/integration")
@@ -70,21 +74,16 @@ public class V2SearchController {
             @ApiImplicitParam(name = CommonConstant.X_GM_MEMBER_NO, paramType = "header", value = "회원 번호", type = "long"),
             @ApiImplicitParam(name = CommonConstant.X_GM_CHARACTER_NO, paramType = "header", value = "캐릭터 번호", type = "long")
     })
-    // queryIntegration > integrationSearch 가 더 명확하게 해당 매소드의 기능을 표현한다.
-    // AIIntegrationSearchRequest > AI가 AI검색셀을 의미하는 건데, 굳이 필요한가 해서 제거
-    public CommonApiResponse<SearchResultVo> integrationSearch(@Valid IntegrationSearchRequest searchRequest) {
+    public CommonApiResponse<SearchResultVo> queryIntegration(@Valid AIIntegrationSearchRequest searchRequest) {
         GMContext gmContext = GMContext.getContext();
 
-        // getSearchKeyword > replaceSearchKeywordByLength : 키워드를 50자 이내로 자르는 기능을 하는 메소드로 정확한 기능을 의미하는 이름으로 변경한다.
-        String searchKeyword = SearchKeywordUtils.replaceSearchKeywordByLength(searchRequest.getKeyword());
+        String searchKeyword = SearchKeywordUtils.getSearchKeyword(searchRequest.getKeyword());
 
         log.debug("searchKeyword={}", searchKeyword);
 
-        // queryIntegration > integrationSearch : integrationSearch 가 더 명확한 표현이다.
-        SearchResultVo result = searchService.integrationSearch(gmContext, searchKeyword, searchRequest.getSortType());
+        SearchResultVo result = searchService.queryIntegration(gmContext, searchKeyword, searchRequest.getSortType());
 
-        // underVersionRemoveDimYItem > checkUnderVersionAndRemoveDimYItem : 누구든 보고 이해할 수 있는 이름을 사용해야한다.
-        this.checkUnderVersionAndRemoveDimYItem(gmContext, result);
+        this.underVersionRemoveDimYItem(gmContext, result);
 
         return new CommonApiResponse<>(result);
     }
@@ -99,22 +98,25 @@ public class V2SearchController {
             @ApiImplicitParam(name = CommonConstant.X_GM_MEMBER_NO, paramType = "header", value = "회원 번호", type = "long"),
             @ApiImplicitParam(name = CommonConstant.X_GM_CHARACTER_NO, paramType = "header", value = "캐릭터 번호", type = "long")
     })
-    // query > searchByType / tabSearch 가 더 명확한 이름이라고 생각한다.
-    // AIIntegrationSearchRequest > AI가 AI검색셀을 의미하는 건데, 굳이 필요한가 해서 제거
-    public CommonApiResponse<SearchResultVo> searchByType(@ApiIgnore @PageableDefault(page = 1) Pageable pageable,
-                                                                @Valid SearchRequest searchRequest) {
+    public CommonApiResponse<SearchResultVo> query(@ApiIgnore @PageableDefault(page = 1) Pageable pageable,
+                                                   @Valid AISearchRequest searchRequest) {
         GMContext gmContext = GMContext.getContext();
 
-        String searchKeyword = SearchKeywordUtils.replaceSearchKeywordByLength(searchRequest.getKeyword());
+        String searchKeyword = SearchKeywordUtils.getSearchKeyword(searchRequest.getKeyword());
 
         log.debug("searchKeyword={}", searchKeyword);
 
         SearchResultVo result;
 
+        /* 해당 부분
+        // 내 취향 MIX 주석 삭제하고
+        searchRequest.isMixable() > searchRequest.isMyTasteMixSearch()로 변하하여
+        주석 없이 코드만 보고 파악 가능하게 수정한다.
+        */
+
         // 내 취향 MIX
-        if (searchRequest.isMixable()) { //isMixable은 잘 작명한 것 같다.
-            // query > searchBySearchType : 더 명확하게 검색 타입에 따른 검색 메소드를 의미한다.
-            result = myTasteMixService.searchByType(
+        if (searchRequest.isMixable()) {
+            result = tasteMixService.query(
                     gmContext,
                     pageable,
                     searchKeyword,
@@ -123,7 +125,7 @@ public class V2SearchController {
                     searchRequest.getMixYn()
             );
         } else {
-            result = searchService.searchByType(
+            result = searchService.query(
                     gmContext,
                     pageable,
                     searchKeyword,
@@ -132,16 +134,14 @@ public class V2SearchController {
             );
         }
 
-        this.checkUnderVersionAndRemoveDimYItem(gmContext, result);
+        this.underVersionRemoveDimYItem(gmContext, result);
 
         return new CommonApiResponse<>(result);
     }
 
     @ApiOperation(value = "필드 지정 검색 (track, artist, album)")
     @GetMapping("/specify")
-    // specify > fieldDesignationSearch : 필드지정이라는 의미를 명확하게 하도록 이름을 변경했다.
-    public CommonApiResponse<FieldDesignationSearchResultVo> fieldDesignationSearch(FieldDesignationSearchRequest request) {
-
+    public CommonApiResponse<SpecifySearchResultVo> specifySearch(AISpecifySearchRequest request) {
         String trackKeyword = request.getTrackKeyword();
         String artistKeyword = request.getArtistKeyword();
         String albumKeyword = request.getAlbumKeyword();
@@ -149,66 +149,68 @@ public class V2SearchController {
         log.info("keyword :: track='{}', artist='{}', album='{}'", trackKeyword, artistKeyword, albumKeyword);
 
         // 검색 키워드가 아무것도 입력되지 않았을 경우 예외 처리
+
+
+        /* 해당 부분
+       // 검색 키워드가 아무것도 입력되지 않았을 경우 예외 처리 라는 주석 없이
+        searchRequest.isMixable() > searchRequest.isMyTasteMixSearch()로 변하하여
+        주석 없이 코드만 보고 파악 가능하게 수정한다.
+        */
+
         if (StringUtils.isAllBlank(trackKeyword, artistKeyword, albumKeyword)) {
             throw new CommonBusinessException(CommonErrorDomain.BAD_REQUEST);
         }
 
-        // specify > fieldDesignationSearch : 필드지정이라는 의미를 명확하게 하도록 이름을 변경했다.
-        SpecifySearchResultVo result = searchService.fieldDesignationSearch(request);
+        SpecifySearchResultVo result = searchService.querySpecify(request);
         return new CommonApiResponse<>(result);
     }
 
     @ApiOperation(value = "자동완성(순간 검색)", httpMethod = "GET", notes = "자동완성 위한 순간 검색")
-    @GetMapping(value = "/autoCompletion")
-    // 순간 검색의 의미로 instant(즉시)를 사용하는 것 보다는 실제 키워드 자동완성 기능을 의미하는 keywordAutoCompletion 이 더 명확한 것 같다.
-    public CommonApiResponse<SearchKeywordVo> keywordAutoCompletion(@RequestParam(name = "keyword") String keyword) {
-
+    @GetMapping(value = "/instant")
+    public CommonApiResponse<SearchKeywordVo> instantSearch(@RequestParam(name = "keyword") String keyword) {
         Long characterNo = GMContext.getContext().getCharacterNo();
         Long memberNo = GMContext.getContext().getMemberNo();
 
         SearchKeywordVo searchKeywordVo = SearchKeywordVo.builder()
-                // instantSearchService 보다는 keywordAutoCompletionService 가 더 명확한 것 같다.
-                // searchInstantV2 > searchKeywordAutoCompletion : 더 명확한 키워드 자동완성 검색 메소드의 이름을 지정했다.
-                .list(Collections.singletonList(keywordAutoCompletionService.searchKeywordAutoCompletion(memberNo, characterNo, keyword)))
+                .list(Collections.singletonList(instantSearchService.searchInstantV2(memberNo, characterNo, keyword)))
                 .build();
 
         return new CommonApiResponse<>(searchKeywordVo);
     }
 
     @ApiOperation(value = "키워드 조회", httpMethod = "GET", notes = "인기/급상승 키워드 검색")
-    // 인기/급상승 키워드 차트이므로 keywordChart 로 정확하게 명시를 하고 싶다.
-    @GetMapping(value = "/keywordChart")
-    // getKeywords > getKeyWordCharts 로 변경
-    public CommonApiResponse<SearchKeywordVo> getKeyWordCharts() {
+    @GetMapping(value = "/keyword")
+    public CommonApiResponse<SearchKeywordVo> getKeywords() {
 
         // 인기 키워드 >> 어드민 개발이 이루어 지지 않아 운영되지 않고 있는 상태, 어드민 개발 완료되면 추가 될 예정
 
-        // 급상승 키워드를 가져오기 때문에 SearchKeywordRisingVo > RisingSearchKeywordVo 로 변경한다.
-        // getKeywordRising > getRisingKerword 가 더 바로 이해가 되고 쉽게 읽혀진다.
-        SearchKeywordItemVo<RisingSearchKeywordVo> RisingKeywordVo = keywordSearchService.getRisingKerword();
+        /* 해당 부분
+       // 예외 처리 라는 주
+        searchRequest.isMixable() > searchRequest.isMyTasteMixSearch()로 변하하여
+        주석 없이 코드만 보고 파악 가능하게 수정한다.
+        */
 
-        // keywordRisingVoList > risingKeywordVoList 가 더 바로 이해가 되고 쉽게 읽혀진다.
-        List<SearchKeywordRisingVo> risingKeywordVoList = RisingKeywordVo.getList();
+        SearchKeywordItemVo<SearchKeywordRisingVo> keywordRisingVo = keywordSearchService.getKeywordRising();
+        List<SearchKeywordRisingVo> keywordRisingVoList = keywordRisingVo.getList();
 
-        if (CollectionUtils.isEmpty(risingKeywordVoList)) {
+        if (CollectionUtils.isEmpty(keywordRisingVoList)) {
             throw new CommonBusinessException(CommonErrorDomain.EMPTY_DATA);
         }
 
         List<SearchKeywordItemVo> list = new ArrayList<>();
 
-        if (risingKeywordVoList.size() > 0) {
-            list.add(risingKeywordVo);
+        if (keywordRisingVoList.size() > 0) {
+            list.add(keywordRisingVo);
         }
 
-        // searchKeywordVo > searchChartKeywordVo 인기/급상승 키워드 차트이므로
-        SearchKeywordVo searchChartKeywordVo = SearchKeywordVo.builder().list(risingKeywordVoList).build();
+        SearchKeywordVo searchKeywordVo = SearchKeywordVo.builder().list(list).build();
         return new CommonApiResponse<>(searchKeywordVo);
     }
 
     /**
      * 5.4.0 보다 하위버전 이거나 빅스비인 경우, DIM 처리된 검색 결과 값 제외 처리
      */
-    public void checkUnderVersionAndRemoveDimYItem(GMContext gmContext, SearchResultVo result) {
+    public void underVersionRemoveDimYItem(GMContext gmContext, SearchResultVo result) {
         String appVer = gmContext.getAppVer();
         String appName = getValueOrDefault(gmContext.getAppName(), "");
         boolean isBelow540Version = VersionUtils.isBelowVersion("5.4.0", appVer);
