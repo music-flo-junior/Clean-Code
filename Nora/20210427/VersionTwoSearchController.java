@@ -99,9 +99,9 @@ public class V2SearchController {
             @ApiImplicitParam(name = CommonConstant.X_GM_MEMBER_NO, paramType = "header", value = "회원 번호", type = "long"),
             @ApiImplicitParam(name = CommonConstant.X_GM_CHARACTER_NO, paramType = "header", value = "캐릭터 번호", type = "long")
     })
-    // query > searchBySearchType / tabSearch 가 더 명확한 이름이라고 생각한다.
+    // query > searchByType / tabSearch 가 더 명확한 이름이라고 생각한다.
     // AIIntegrationSearchRequest > AI가 AI검색셀을 의미하는 건데, 굳이 필요한가 해서 제거
-    public CommonApiResponse<SearchResultVo> searchBySearchType(@ApiIgnore @PageableDefault(page = 1) Pageable pageable,
+    public CommonApiResponse<SearchResultVo> searchByType(@ApiIgnore @PageableDefault(page = 1) Pageable pageable,
                                                                 @Valid SearchRequest searchRequest) {
         GMContext gmContext = GMContext.getContext();
 
@@ -114,7 +114,7 @@ public class V2SearchController {
         // 내 취향 MIX
         if (searchRequest.isMixable()) { //isMixable은 잘 작명한 것 같다.
             // query > searchBySearchType : 더 명확하게 검색 타입에 따른 검색 메소드를 의미한다.
-            result = myTasteMixService.searchBySearchType(
+            result = myTasteMixService.searchByType(
                     gmContext,
                     pageable,
                     searchKeyword,
@@ -123,7 +123,7 @@ public class V2SearchController {
                     searchRequest.getMixYn()
             );
         } else {
-            result = searchService.searchBySearchType(
+            result = searchService.searchByType(
                     gmContext,
                     pageable,
                     searchKeyword,
