@@ -1,4 +1,4 @@
-#의미있는 이름(Meaningful Name)
+# 의미있는 이름(Meaningful Name)
 
 - 변수, 함수, 인수와 클래스, 소스파일, 소스파일이 담긴 디렉터리, jar 파일, war 파일, ear 파일에도 이름을 붙인다.
 
