@@ -186,8 +186,7 @@ public class V2SearchController {
 
         /* 해당 부분
        // 예외 처리 라는 주
-        searchRequest.isMixable() > searchRequest.isMyTasteMixSearch()로 변하하여
-        주석 없이 코드만 보고 파악 가능하게 수정한다.
+        searchRequest.isMixable() > searchRequest.isMyTasteMixSearch()로 변경하여 주석 없이 코드만 보고 파악 가능하게 수정한다.
         */
 
         SearchKeywordItemVo<SearchKeywordRisingVo> keywordRisingVo = keywordSearchService.getKeywordRising();
