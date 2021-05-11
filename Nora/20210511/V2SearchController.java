@@ -152,9 +152,8 @@ public class V2SearchController {
 
 
         /* 해당 부분
-       // 검색 키워드가 아무것도 입력되지 않았을 경우 예외 처리 라는 주석 없이
-        searchRequest.isMixable() > searchRequest.isMyTasteMixSearch()로 변하하여
-        주석 없이 코드만 보고 파악 가능하게 수정한다.
+       // 검색 키워드가 아무것도 입력되지 않았을 경우 예외 처리
+       라는 주석 없이 checkBlankKeywords()라는 함수를 구현하여 주석 없이 코드만 보고 파악 가능하게 수정한다.
         */
 
         if (StringUtils.isAllBlank(trackKeyword, artistKeyword, albumKeyword)) {
@@ -184,10 +183,7 @@ public class V2SearchController {
 
         // 인기 키워드 >> 어드민 개발이 이루어 지지 않아 운영되지 않고 있는 상태, 어드민 개발 완료되면 추가 될 예정
 
-        /* 해당 부분
-       // 예외 처리 라는 주
-        searchRequest.isMixable() > searchRequest.isMyTasteMixSearch()로 변경하여 주석 없이 코드만 보고 파악 가능하게 수정한다.
-        */
+        /* 해당 부분은 코드의 히스토리 파악에 필요한 주석으로 유지되어야 한다고 생각함 */
 
         SearchKeywordItemVo<SearchKeywordRisingVo> keywordRisingVo = keywordSearchService.getKeywordRising();
         List<SearchKeywordRisingVo> keywordRisingVoList = keywordRisingVo.getList();
@@ -209,6 +205,10 @@ public class V2SearchController {
     /**
      * 5.4.0 보다 하위버전 이거나 빅스비인 경우, DIM 처리된 검색 결과 값 제외 처리
      */
+
+    /* underVersionRemoveDimYItem > checkDimYItemAndRemoveOfResult(?)
+    * 빅스비와 하위버전을 함수명에 나타내야하는데 어려움..논의필요! */
+
     public void underVersionRemoveDimYItem(GMContext gmContext, SearchResultVo result) {
         String appVer = gmContext.getAppVer();
         String appName = getValueOrDefault(gmContext.getAppName(), "");
