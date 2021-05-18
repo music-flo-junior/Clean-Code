@@ -207,7 +207,10 @@ public class V2SearchController {
      */
 
     /* underVersionRemoveDimYItem > checkDimYItemAndRemoveOfResult(?)
-    * 빅스비와 하위버전을 함수명에 나타내야하는데 어려움..논의필요! */
+    * 빅스비와 하위버전을 함수명에 나타내야하는데 어려움..논의필요! -- 쪼개는 걸로 처리.
+    * isBixbyOrBelow540Version
+    * RemoveDimYItem
+    * */
 
     public void underVersionRemoveDimYItem(GMContext gmContext, SearchResultVo result) {
         String appVer = gmContext.getAppVer();
