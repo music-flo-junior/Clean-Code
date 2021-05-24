@@ -7,3 +7,4 @@
 | 3장 | 함수 | [링크](ch3_method.md) |
 | 4장 | 주석 | [링크](ch4_remark.md) |
 | 5장 | 형식 맞추기 | [링크](ch5_format.md) |
+| 6장 | 객체와 자료구조 | [링크](ch6_class.md) |
