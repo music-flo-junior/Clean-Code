@@ -35,14 +35,26 @@ public List<int[]> getThem(){
 ```
 ##### 좋은 예시
 ```java
-public List<Cell> getFlaggedCells(){
-    List<Cell> flaggedCells = new ArrayList<Cell>();
-    for (Cell cell : gameBoard)
+public List<int[]> getFlaggedCells(){
+    List<int[]> flaggedCells = new ArrayList<int[]>();
+    for (int[] cell : gameBoard)
         if (cell[STATUS_VALUE] == FLAGGED)
             flaggedCells.add(cell);
     return flaggedCells;
 }
 ```
+
+##### 더 좋은 예시
+```java
+public List<Cell> getFlaggedCells(){
+    List<Cell> flaggedCells = new ArrayList<Cell>();
+    for (Cell cell : gameBoard)
+        if (cell.isFlagged())
+            flaggedCells.add(cell);
+    return flaggedCells;
+}
+```
+
 - 코드에 정보 제공을 충분히 하자
 
 #### 2. 그릇된 정보를 피하라
@@ -92,7 +104,7 @@ class DtaRcrd102 {
 class Customer {
     private Date generationTimeStamp;
     private Date modificationTimeStamp;
-    private final String rdcordId = "102";
+    private final String recordId = "102";
 };
 ```
 
