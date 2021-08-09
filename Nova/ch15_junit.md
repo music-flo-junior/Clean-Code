@@ -199,7 +199,7 @@ public class ComparisonCompactor {
 }
 ```
 
-비록 저자들이 모듈을 아주 좋은 상태로 남겨두었지만 보이슼아ㅜ트 규칙에 따르면 우리는 처음 왔을 때보다 더 깨끗하게 해놓고 떠나야 한다. 
+비록 저자들이 모듈을 아주 좋은 상태로 남겨두었지만 보이스카우트 규칙에 따르면 우리는 처음 왔을 때보다 더 깨끗하게 해놓고 떠나야 한다. 
 
 #### 1) 접두어 f를 제거하자
 ```java
@@ -247,6 +247,7 @@ private boolean shouldNotCompact() {
 ```
 
 #### 3) 이름은 명확하게 붙이자
+fExpect, fActual
 ```java
 String compactExpected = compactString(expected);
 String compactActual = compactString(actual);
@@ -273,7 +274,7 @@ private boolean canBeCompacted() {
 ```
 
 #### 5) 함수의 이름으로 효과를 명확하게 설명하자
-문자열을 압축하는 함수지만 canBeCompactedrk false면 압축하지 않는다. 게다가 함수는 단순히 압축된 문자열이 아니라 형식이 갖춰진 문자열을 반환한다.
+문자열을 압축하는 함수지만 canBeCompacted가 false면 압축하지 않는다. 게다가 함수는 단순히 압축된 문자열이 아니라 형식이 갖춰진 문자열을 반환한다.
 
 ```java
 public String formatCompactedComparison(String message) {
