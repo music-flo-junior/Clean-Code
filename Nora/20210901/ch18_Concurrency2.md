@@ -8,12 +8,14 @@
 
 또한, 해당 테스트가 10초 내에 처리가 되는지를 확인하는 테스트코드를 구현하였다.
 
+```
 @Test(timeout = 10000)
 public void shouldRunInUnder10Seconds() throws Exception {
     Thread[] threads = createThreads();
     startAllThreads(threads);
     waitForAllThreadsToFinish(threads);
 }
+```
 
 만약 테스트가 실패한다면? 이벤트 폴링 루프를 구현하면 모를까, 단일 스레드 환경에서 속도를 끌어올릴 방법은 거의 없다. 
 
